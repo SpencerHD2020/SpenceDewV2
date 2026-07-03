@@ -1,13 +1,26 @@
 # Build output
 build/
+build-win/
 build-linux/
+out/
 .cache/
+
+# CMake
+CMakeUserPresets.json
+cmake-build-*/
 
 # Visual Studio
 .vs/
 *.user
 *.suo
-out/
+*.VC.db
+*.VC.opendb
+
+# VS Code
+.vscode/settings.json
 
 # macOS
 .DS_Store
+
+# Windows
+Thumbs.db
