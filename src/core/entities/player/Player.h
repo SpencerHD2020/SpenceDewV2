@@ -3,6 +3,7 @@
 #include "core/entities/player/states/StateMachine.h"
 #include "core/systems/combat/Hitbox.h"
 #include "core/systems/combat/Hurtbox.h"
+#include <vector>
 
 // ============================================================
 //  Player  —  top-down character controller.
@@ -11,23 +12,28 @@
 //  moveAndSlide() integrates velocity into position and keeps
 //  the hurtbox rect in sync.
 // ============================================================
-class Player {
+class Player
+{
 public:
     // --- Transform ---
-    Vector2 position = {640.0f, 360.0f};
-    Vector2 velocity = {  0.0f,   0.0f};
-    Vector2 facing   = {  0.0f,   1.0f}; // Default: facing down
+    Vector2 position = {0.0f, 0.0f};
+    Vector2 velocity = {0.0f, 0.0f};
+    Vector2 facing = {0.0f, 1.0f}; // Default: facing down
 
     // --- Stats ---
-    float maxHealth     = 100.0f;
+    float maxHealth = 100.0f;
     float currentHealth = 100.0f;
 
     // --- Collision ---
     float collisionRadius = 12.0f;
 
     // --- Combat ---
-    Hitbox  meleeHitbox;
+    Hitbox meleeHitbox;
     Hurtbox hurtbox;
+
+    // --- Environment ---
+    // Pointer to the active level's wall list; set by main after tilemap creation.
+    const std::vector<Rectangle> *walls = nullptr;
 
     // --- FSM ---
     StateMachine fsm;
@@ -43,13 +49,13 @@ public:
     void takeDamage(float amount, Vector2 sourcePos);
 
     // Axis-aligned bounding box around the player sprite
-    Rectangle getBounds() const {
+    Rectangle getBounds() const
+    {
         return {
             position.x - collisionRadius,
             position.y - collisionRadius,
             collisionRadius * 2.0f,
-            collisionRadius * 2.0f
-        };
+            collisionRadius * 2.0f};
     }
 
 private:

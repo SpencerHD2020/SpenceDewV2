@@ -8,18 +8,20 @@
 
 #include <cstdio>
 
-void Player::init() {
+void Player::init()
+{
     // --- Hurtbox setup ---
-    hurtbox.ownerEntity      = this;
-    hurtbox.onDamageReceived = [this](float amount, Vector2 sourcePos) {
+    hurtbox.ownerEntity = this;
+    hurtbox.onDamageReceived = [this](float amount, Vector2 sourcePos)
+    {
         takeDamage(amount, sourcePos);
     };
     hurtbox.rect = getBounds();
 
     // --- Melee hitbox setup ---
     meleeHitbox.ownerEntity = this;
-    meleeHitbox.damage      = 10.0f;
-    meleeHitbox.isActive    = false;
+    meleeHitbox.damage = 10.0f;
+    meleeHitbox.isActive = false;
 
     // --- Register states ---
     fsm.addState<StateIdle>("idle");
@@ -31,53 +33,95 @@ void Player::init() {
     fsm.init(this, "idle");
 }
 
-void Player::update(float delta) {
+void Player::update(float delta)
+{
     fsm.update(delta);
     fsm.physicsUpdate(delta);
 }
 
-void Player::draw() {
+void Player::draw()
+{
     // Placeholder visuals — replace with sprite once assets are ready
     DrawCircleV(position, collisionRadius, BLUE);
 
     // Facing indicator
     Vector2 facingEnd = {
         position.x + facing.x * (collisionRadius + 8.0f),
-        position.y + facing.y * (collisionRadius + 8.0f)
-    };
+        position.y + facing.y * (collisionRadius + 8.0f)};
     DrawLineV(position, facingEnd, YELLOW);
 
     // Debug: active melee hitbox
-    if (meleeHitbox.isActive) {
+    if (meleeHitbox.isActive)
+    {
         DrawRectangleLinesEx(meleeHitbox.rect, 2, RED);
         DrawText("HIT", static_cast<int>(meleeHitbox.rect.x),
-                         static_cast<int>(meleeHitbox.rect.y) - 14, 12, RED);
+                 static_cast<int>(meleeHitbox.rect.y) - 14, 12, RED);
     }
 
     // Debug: hurtbox boundary
-    if (hurtbox.isInvulnerable) {
+    if (hurtbox.isInvulnerable)
+    {
         DrawRectangleLinesEx(hurtbox.rect, 2, GOLD); // gold = I-frames active
     }
 }
 
-void Player::moveAndSlide(float delta) {
+void Player::moveAndSlide(float delta)
+{
+    // --- X axis ---
     position.x += velocity.x * delta;
+    if (walls)
+    {
+        Rectangle bounds = getBounds();
+        for (const Rectangle &wall : *walls)
+        {
+            if (CheckCollisionRecs(bounds, wall))
+            {
+                if (velocity.x > 0.0f)
+                    position.x = wall.x - collisionRadius;
+                else
+                    position.x = wall.x + wall.width + collisionRadius;
+                velocity.x = 0.0f;
+                bounds = getBounds();
+            }
+        }
+    }
+
+    // --- Y axis ---
     position.y += velocity.y * delta;
-    // Keep hurtbox rect in sync with position
+    if (walls)
+    {
+        Rectangle bounds = getBounds();
+        for (const Rectangle &wall : *walls)
+        {
+            if (CheckCollisionRecs(bounds, wall))
+            {
+                if (velocity.y > 0.0f)
+                    position.y = wall.y - collisionRadius;
+                else
+                    position.y = wall.y + wall.height + collisionRadius;
+                velocity.y = 0.0f;
+                bounds = getBounds();
+            }
+        }
+    }
+
     hurtbox.rect = getBounds();
 }
 
-void Player::takeDamage(float amount, Vector2 /*sourcePos*/) {
+void Player::takeDamage(float amount, Vector2 /*sourcePos*/)
+{
     currentHealth -= amount;
     printf("Player took %.1f damage! Health: %.1f / %.1f\n",
            amount, currentHealth, maxHealth);
-    if (currentHealth <= 0.0f) onDeath();
+    if (currentHealth <= 0.0f)
+        onDeath();
 }
 
-void Player::onDeath() {
+void Player::onDeath()
+{
     printf("Player died! Respawning at origin.\n");
     currentHealth = maxHealth;
-    position      = {640.0f, 360.0f};
-    velocity      = {  0.0f,   0.0f};
+    position = {0.0f, 0.0f};
+    velocity = {0.0f, 0.0f};
     fsm.changeState("idle");
 }

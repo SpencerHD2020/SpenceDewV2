@@ -105,13 +105,13 @@ The executable lands at `build/Debug/SpenceDew.exe`.
 
 ## 5. MVP Schedule
 
-### Phase 1: Foundation (Weeks 1–2) ✅ In Progress
+### Phase 1: Foundation (Weeks 1–2) ✅ Complete
 - [x] Project structure & build system (CMake + FetchContent)
 - [x] Player controller — 8-way movement, walk/sprint
 - [x] FSM — Idle, Run, Attack, Dodge states
 - [x] Hitbox / Hurtbox collision system
-- [ ] Camera follow (2D Camera2D in raylib)
-- [ ] Placeholder tilemap (hardcoded rectangles as walls)
+- [x] Camera follow (2D Camera2D in raylib)
+- [x] Placeholder tilemap (hardcoded rectangles as walls)
 
 ### Phase 2: Deep Combat Prototyping (Weeks 3–5)
 - [ ] Spritesheet loader + animation system (`AnimatedSprite` helper class)
