@@ -1,0 +1,10 @@
+^C:\USERS\SPENC\DEVELOPMENT\SPENCEDEWV2\BUILD-WIN\_DEPS\RAYLIB-SRC\SRC\EXTERNAL\GLFW\SRC\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/spenc/Development/SpenceDewV2 -BC:/Users/spenc/Development/SpenceDewV2/build-win --check-stamp-file C:/Users/spenc/Development/SpenceDewV2/build-win/_deps/raylib-build/raylib/external/glfw/src/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

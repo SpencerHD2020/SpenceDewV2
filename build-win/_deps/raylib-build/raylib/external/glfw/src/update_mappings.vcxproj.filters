@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\spenc\Development\SpenceDewV2\build-win\CMakeFiles\5d178ab5fa89bda81be46a9174a97970\update_mappings.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\spenc\Development\SpenceDewV2\build-win\_deps\raylib-src\src\external\glfw\src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\spenc\Development\SpenceDewV2\build-win\_deps\raylib-src\src\external\glfw\src\mappings.h.in">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="C:\Users\spenc\Development\SpenceDewV2\build-win\_deps\raylib-src\src\external\glfw\CMake\GenerateMappings.cmake" />
+    <None Include="C:\Users\spenc\Development\SpenceDewV2\build-win\_deps\raylib-build\raylib\external\glfw\src\CMakeFiles\update_mappings" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{AC063868-BB12-3437-9C0E-6300BC311D3F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{908EA6E6-4FB4-34B9-9267-8BE18C283140}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

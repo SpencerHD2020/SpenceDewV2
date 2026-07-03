@@ -1,0 +1,10 @@
+^C:\USERS\SPENC\DEVELOPMENT\SPENCEDEWV2\BUILD-WIN\_DEPS\RAYLIB-SUBBUILD\CMAKEFILES\F920396F66D240EDE2C15A675F4309B1\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/spenc/Development/SpenceDewV2/build-win/_deps/raylib-subbuild -BC:/Users/spenc/Development/SpenceDewV2/build-win/_deps/raylib-subbuild --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/spenc/Development/SpenceDewV2/build-win/_deps/raylib-subbuild/raylib-populate.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

@@ -1,0 +1,24 @@
+{
+    "name": "SpenceDew C++ Game",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools-extension-pack",
+                "ms-vscode.cmake-tools",
+                "ms-vscode.makefile-tools"
+            ],
+            "settings": {
+                "cmake.buildDirectory": "${workspaceFolder}/build-linux",
+                "cmake.generator": "Ninja",
+                "cmake.configureSettings": {
+                    "CMAKE_BUILD_TYPE": "Debug"
+                },
+                "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
+            }
+        }
+    },
+    "remoteUser": "vscode"
+}

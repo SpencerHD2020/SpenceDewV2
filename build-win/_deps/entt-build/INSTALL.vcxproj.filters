@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\spenc\Development\SpenceDewV2\build-win\CMakeFiles\2260e754ddee9977dbd3d7334cdd863b\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{AC063868-BB12-3437-9C0E-6300BC311D3F}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

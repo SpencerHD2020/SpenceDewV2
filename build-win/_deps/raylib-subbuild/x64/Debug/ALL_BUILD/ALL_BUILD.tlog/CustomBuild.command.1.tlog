@@ -1,0 +1,10 @@
+^C:\USERS\SPENC\DEVELOPMENT\SPENCEDEWV2\BUILD-WIN\_DEPS\RAYLIB-SUBBUILD\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/spenc/Development/SpenceDewV2/build-win/_deps/raylib-subbuild -BC:/Users/spenc/Development/SpenceDewV2/build-win/_deps/raylib-subbuild --check-stamp-file C:/Users/spenc/Development/SpenceDewV2/build-win/_deps/raylib-subbuild/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

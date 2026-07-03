@@ -1,0 +1,13 @@
+# Build output
+build/
+build-linux/
+.cache/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+out/
+
+# macOS
+.DS_Store
