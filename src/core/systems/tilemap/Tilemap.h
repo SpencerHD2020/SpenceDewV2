@@ -1,5 +1,7 @@
 #pragma once
 #include "raylib.h"
+#include "core/systems/tilemap/LdtkLoader.h"
+#include <string>
 #include <vector>
 
 constexpr int TILE_SIZE = 32;
@@ -14,6 +16,45 @@ constexpr int TILE_SIZE = 32;
 struct Tilemap
 {
     std::vector<Rectangle> walls;
+
+    // --- Visual tiles loaded from an LDtk level ---
+    Texture2D tileset = {};
+    struct TileQuad
+    {
+        Rectangle src;
+        Rectangle dst;
+    };
+    std::vector<TileQuad> tiles;
+    bool showWallDebug = false; // Draw collision rects on top of the tiles
+
+    // Load the tileset texture and flatten every visual tile layer of the level
+    // into a single draw list. Call after InitWindow(). tilesetPath is a
+    // project-relative path (the .ldtk's own relPath usually points outside the
+    // project, so the caller supplies the shipped asset location).
+    void loadVisuals(const LdtkLevel &level, const std::string &tilesetPath)
+    {
+        tileset = LoadTexture(tilesetPath.c_str());
+        if (tileset.id == 0)
+        {
+            TraceLog(LOG_WARNING,
+                     "[Tilemap] Tileset not found: %s — tiles will not render.",
+                     tilesetPath.c_str());
+        }
+        // Draw bottom layer first: LDtk stores layers topmost-first, so reverse.
+        for (auto it = level.tileLayers.rbegin(); it != level.tileLayers.rend(); ++it)
+            for (const LdtkTile &t : it->tiles)
+                tiles.push_back({t.src, t.dst});
+    }
+
+    void unloadVisuals()
+    {
+        if (tileset.id != 0)
+        {
+            UnloadTexture(tileset);
+            tileset = {};
+        }
+        tiles.clear();
+    }
 
     static Tilemap createTestRoom()
     {
@@ -41,10 +82,21 @@ struct Tilemap
 
     void draw() const
     {
-        for (const Rectangle &wall : walls)
+        // --- Visual tiles (if a tileset was loaded) ---
+        if (tileset.id != 0)
         {
-            DrawRectangleRec(wall, DARKGRAY);
-            DrawRectangleLinesEx(wall, 1.0f, BLACK);
+            for (const TileQuad &q : tiles)
+                DrawTexturePro(tileset, q.src, q.dst, {0.0f, 0.0f}, 0.0f, WHITE);
+        }
+
+        // --- Collision debug (off by default once real tiles are present) ---
+        if (showWallDebug || tileset.id == 0)
+        {
+            for (const Rectangle &wall : walls)
+            {
+                DrawRectangleRec(wall, DARKGRAY);
+                DrawRectangleLinesEx(wall, 1.0f, BLACK);
+            }
         }
     }
 };

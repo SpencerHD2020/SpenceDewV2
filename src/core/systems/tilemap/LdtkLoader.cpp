@@ -52,6 +52,43 @@ bool LdtkLoader::load(const std::string &filePath, std::vector<LdtkLevel> &outLe
             const int gridSize = layer.value("__gridSize", 32);
             const int cWid = layer.value("__cWid", 0);
 
+            // ---- Visual tile data (Tiles + AutoLayer layers) ----
+            // Both "gridTiles" (hand-placed) and "autoLayerTiles" (rule-based)
+            // use the same tile record shape: { px:[x,y], src:[x,y], f:flipBits }.
+            auto parseTiles = [&](const json &arr)
+            {
+                if (arr.empty())
+                    return;
+                LdtkTileLayer tl;
+                tl.tilesetRelPath = layer.value("__tilesetRelPath", "");
+                tl.gridSize = gridSize;
+                const float gs = static_cast<float>(gridSize);
+                for (const auto &t : arr)
+                {
+                    if (!t.contains("px") || !t.contains("src"))
+                        continue;
+                    LdtkTile tile;
+                    float sx = static_cast<float>(t["src"][0].get<int>());
+                    float sy = static_cast<float>(t["src"][1].get<int>());
+                    float sw = gs, sh = gs;
+                    const int flip = t.value("f", 0);
+                    if (flip & 1) { sx += gs; sw = -gs; } // horizontal flip
+                    if (flip & 2) { sy += gs; sh = -gs; } // vertical flip
+                    tile.src = {sx, sy, sw, sh};
+                    tile.dst = {
+                        static_cast<float>(level.worldX + t["px"][0].get<int>()),
+                        static_cast<float>(level.worldY + t["px"][1].get<int>()),
+                        gs, gs};
+                    tl.tiles.push_back(tile);
+                }
+                if (!tl.tiles.empty())
+                    level.tileLayers.push_back(std::move(tl));
+            };
+            if (layer.contains("gridTiles"))
+                parseTiles(layer["gridTiles"]);
+            if (layer.contains("autoLayerTiles"))
+                parseTiles(layer["autoLayerTiles"]);
+
             // ---- IntGrid collision layer ----
             if (type == "IntGrid" && layer.contains("intGridCsv"))
             {

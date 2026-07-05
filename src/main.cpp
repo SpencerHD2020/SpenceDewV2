@@ -33,6 +33,9 @@ int main()
         if (LdtkLoader::load("assets/levels/level_01.ldtk", levels) && !levels.empty())
         {
             tilemap.walls = levels[0].walls;
+            // Load the visual tiles. The .ldtk references the tileset via a path
+            // outside the project, so we point at the copy shipped in assets/.
+            tilemap.loadVisuals(levels[0], "assets/tilesets/tilemap.png");
             for (const auto &ent : levels[0].entities)
             {
                 if (ent.identifier == "PlayerSpawn")
@@ -194,11 +197,14 @@ int main()
 
         tilemap.draw();
 
-        // Dev grid
-        for (int x = -20; x <= 20; x++)
-            DrawLine(x * 32, -640, x * 32, 640, {50, 50, 50, 255});
-        for (int y = -20; y <= 20; y++)
-            DrawLine(-640, y * 32, 640, y * 32, {50, 50, 50, 255});
+        // Dev grid (only when no real tiles are loaded, so it doesn't cover them)
+        if (tilemap.tiles.empty())
+        {
+            for (int x = -20; x <= 20; x++)
+                DrawLine(x * 32, -640, x * 32, 640, {50, 50, 50, 255});
+            for (int y = -20; y <= 20; y++)
+                DrawLine(-640, y * 32, 640, y * 32, {50, 50, 50, 255});
+        }
 
         // Draw enemies
         for (const auto &e : enemies)
