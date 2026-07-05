@@ -72,8 +72,16 @@ bool LdtkLoader::load(const std::string &filePath, std::vector<LdtkLevel> &outLe
                     float sy = static_cast<float>(t["src"][1].get<int>());
                     float sw = gs, sh = gs;
                     const int flip = t.value("f", 0);
-                    if (flip & 1) { sx += gs; sw = -gs; } // horizontal flip
-                    if (flip & 2) { sy += gs; sh = -gs; } // vertical flip
+                    if (flip & 1)
+                    {
+                        sx += gs;
+                        sw = -gs;
+                    } // horizontal flip
+                    if (flip & 2)
+                    {
+                        sy += gs;
+                        sh = -gs;
+                    } // vertical flip
                     tile.src = {sx, sy, sw, sh};
                     tile.dst = {
                         static_cast<float>(level.worldX + t["px"][0].get<int>()),

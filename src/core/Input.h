@@ -31,6 +31,15 @@ namespace Input
         return IsKeyPressed(KEY_C) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
     }
 
+    // --- Interaction / dialogue ---
+    inline bool interactJustPressed() { return IsKeyPressed(KEY_E); }
+    inline bool dialogueUpJustPressed() { return IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP); }
+    inline bool dialogueDownJustPressed() { return IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN); }
+    inline bool dialogueConfirmJustPressed()
+    {
+        return IsKeyPressed(KEY_E) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE);
+    }
+
     // Returns a normalised direction vector from WASD / arrow keys.
     // Returns {0,0} when no directional input is held.
     inline Vector2 getMoveVector()

@@ -1,0 +1,121 @@
+{
+    "id": "willow",
+    "start": "greet",
+    "nodes": {
+        "greet": {
+            "speaker": "Willow",
+            "text": "Oh — hello. I didn't hear you come in. You're the new arrival, aren't you?",
+            "choices": [
+                {
+                    "text": "That's me. Nice to meet you!",
+                    "next": "warm",
+                    "affection": 2
+                },
+                {
+                    "text": "Who's asking?",
+                    "next": "cool"
+                },
+                {
+                    "text": "(Say nothing and leave)",
+                    "next": "END"
+                }
+            ]
+        },
+        "warm": {
+            "speaker": "Willow",
+            "text": "A friendly face — what a relief. Come by the garden sometime, I'd like that.",
+            "choices": [
+                {
+                    "text": "I will. See you around!",
+                    "next": "END",
+                    "affection": 1,
+                    "setFlag": "invited_to_garden"
+                }
+            ]
+        },
+        "cool": {
+            "speaker": "Willow",
+            "text": "...Just being neighbourly. No need to bite.",
+            "choices": [
+                {
+                    "text": "Sorry. Long day.",
+                    "next": "warm",
+                    "affection": 1
+                },
+                {
+                    "text": "(Leave)",
+                    "next": "END"
+                }
+            ]
+        },
+        "start_tier1": {
+            "speaker": "Willow",
+            "text": "There you are! I was hoping you'd stop by. How are you settling in?",
+            "choices": [
+                {
+                    "text": "Better, now that I'm here.",
+                    "next": "tier1_flirt",
+                    "affection": 2
+                },
+                {
+                    "text": "Busy — always busy.",
+                    "next": "tier1_busy"
+                }
+            ]
+        },
+        "tier1_flirt": {
+            "speaker": "Willow",
+            "text": "Careful, or I'll start to think you mean that.",
+            "choices": [
+                {
+                    "text": "Maybe I do.",
+                    "next": "END",
+                    "affection": 2
+                },
+                {
+                    "text": "(Smile and change the subject)",
+                    "next": "END"
+                }
+            ]
+        },
+        "tier1_busy": {
+            "speaker": "Willow",
+            "text": "Then don't let me keep you. But… don't be a stranger, alright?",
+            "choices": [
+                {
+                    "text": "I won't.",
+                    "next": "END",
+                    "affection": 1
+                }
+            ]
+        },
+        "start_tier2": {
+            "speaker": "Willow",
+            "text": "I saved you some tea. Sit with me a while? The world can wait.",
+            "choices": [
+                {
+                    "text": "There's nowhere I'd rather be.",
+                    "next": "tier2_close",
+                    "affection": 3
+                },
+                {
+                    "text": "Only for a moment.",
+                    "next": "tier2_close",
+                    "affection": 1
+                }
+            ]
+        },
+        "tier2_close": {
+            "speaker": "Willow",
+            "text": "Good. …It's nice, isn't it? Not having to face everything alone.",
+            "choices": [
+                {
+                    "text": "It is. With you.",
+                    "next": "END",
+                    "affection": 2,
+                    "setFlag": "confessed"
+                }
+            ]
+        }
+    }
+}

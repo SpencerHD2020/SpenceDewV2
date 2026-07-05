@@ -1,14 +1,24 @@
 #include "raylib.h"
 #include "core/entities/player/Player.h"
 #include "core/entities/enemies/Enemy.h"
+#include "core/entities/friends/Friend.h"
+#include "core/entities/friends/PotentialPartner.h"
 #include "core/systems/tilemap/Tilemap.h"
 #include "core/systems/tilemap/LdtkLoader.h"
 #include "core/systems/combat/Projectile.h"
 #include "core/systems/navigation/Pathfinder.h"
 #include "core/systems/ui/DamageNumbers.h"
+#include "core/systems/ui/DialogueUI.h"
+#include "core/systems/dialogue/Dialogue.h"
+#include "core/systems/dialogue/DialogueRunner.h"
+#include "core/systems/relationships/RelationshipManager.h"
+#include "core/Input.h"
 #include <vector>
 #include <memory>
 #include <algorithm>
+#include <string>
+#include <unordered_map>
+#include <cfloat>
 
 // -----------------------------------------------------------------------
 // Set to true once you have placed assets/levels/level_01.ldtk
@@ -26,6 +36,9 @@ int main()
     Tilemap tilemap;
     Vector2 playerSpawn = {0.0f, 0.0f};
     std::vector<Vector2> enemySpawns;
+    // Positions of NPC markers placed in LDtk (identifier "NpcSpawn" / "PartnerSpawn").
+    std::vector<Vector2> npcSpawns;
+    std::vector<Vector2> partnerSpawns;
 
     if (USE_LDTK)
     {
@@ -42,6 +55,10 @@ int main()
                     playerSpawn = ent.position;
                 if (ent.identifier == "EnemySpawn")
                     enemySpawns.push_back(ent.position);
+                if (ent.identifier == "NpcSpawn")
+                    npcSpawns.push_back(ent.position);
+                if (ent.identifier == "PartnerSpawn")
+                    partnerSpawns.push_back(ent.position);
             }
         }
     }
@@ -126,6 +143,69 @@ int main()
     };
 
     // ----------------------------------------------------------------
+    // NPCs  (Friends + PotentialPartners)
+    // ----------------------------------------------------------------
+    // Heap-allocated like enemies so pointers stay stable. Stored as Friend*
+    // so PotentialPartner behaviour (tiers, heart marker) works polymorphically.
+    //
+    // >>> To add a new NPC: append one entry to the spawn table below and
+    //     create assets/dialogue/<dialogueId>.json. See NPC_Dialogue_Guide.md.
+    std::vector<std::unique_ptr<Friend>> friends;
+
+    auto addPartner = [&](Vector2 pos, const std::string &id,
+                          const std::string &name, const std::string &dialogueId)
+    {
+        auto p = std::make_unique<PotentialPartner>();
+        p->init(pos, id, name, dialogueId);
+        p->walls = &tilemap.walls;
+        friends.push_back(std::move(p));
+    };
+    auto addFriend = [&](Vector2 pos, const std::string &id,
+                         const std::string &name, const std::string &dialogueId)
+    {
+        auto fr = std::make_unique<Friend>();
+        fr->init(pos, id, name, dialogueId);
+        fr->walls = &tilemap.walls;
+        friends.push_back(std::move(fr));
+    };
+
+    // Demo romanceable NPC. Uses a LDtk PartnerSpawn if present, else stands
+    // a little to the right of the player spawn so it's immediately testable.
+    {
+        Vector2 willowPos = partnerSpawns.empty()
+                                ? Vector2{playerSpawn.x + 64.0f, playerSpawn.y}
+                                : partnerSpawns[0];
+        addPartner(willowPos, "willow", "Willow", "willow");
+    }
+    // Any additional LDtk-placed partners/friends beyond the first.
+    for (size_t i = 1; i < partnerSpawns.size(); ++i)
+        addPartner(partnerSpawns[i], "partner_" + std::to_string(i),
+                   "Stranger", "willow");
+    for (size_t i = 0; i < npcSpawns.size(); ++i)
+        addFriend(npcSpawns[i], "npc_" + std::to_string(i), "Villager", "willow");
+
+    // ----------------------------------------------------------------
+    // Dialogue + relationships
+    // ----------------------------------------------------------------
+    RelationshipManager::instance().load("relationships.sav");
+
+    std::unordered_map<std::string, Dialogue> dialogueCache;
+    DialogueRunner dialogue;
+
+    // Lazily load and cache a dialogue file by id.
+    auto getDialogue = [&](const std::string &id) -> const Dialogue *
+    {
+        auto it = dialogueCache.find(id);
+        if (it != dialogueCache.end())
+            return &it->second;
+        Dialogue d;
+        if (!DialogueLoader::load("assets/dialogue/" + id + ".json", d))
+            return nullptr;
+        auto [ins, ok] = dialogueCache.emplace(id, std::move(d));
+        return &ins->second;
+    };
+
+    // ----------------------------------------------------------------
     // Camera
     // ----------------------------------------------------------------
     Camera2D camera = {};
@@ -139,50 +219,96 @@ int main()
     {
         const float delta = GetFrameTime();
 
-        // ---- Build hurtbox lists for this frame ----
-        std::vector<Hurtbox *> enemyHurtboxes;
-        enemyHurtboxes.reserve(enemies.size());
-        for (auto &e : enemies)
-            if (!e->markedForRemoval)
-                enemyHurtboxes.push_back(&e->hurtbox);
-
-        // ---- Update player ----
-        player.update(delta);
-
-        // ---- Player melee hitbox vs enemy hurtboxes ----
-        if (player.meleeHitbox.isActive)
-            player.meleeHitbox.checkOverlap(enemyHurtboxes);
-
-        // ---- Update enemies + their hitboxes vs player ----
-        std::vector<Hurtbox *> playerHurtbox = {&player.hurtbox};
-        for (auto &e : enemies)
+        // ---- Find the nearest interactable NPC in range (for prompt + input) ----
+        Friend *nearbyNpc = nullptr;
         {
-            if (e->markedForRemoval)
-                continue;
-            e->update(delta);
-            if (e->meleeHitbox.isActive)
-                e->meleeHitbox.checkOverlap(playerHurtbox);
+            float best = FLT_MAX;
+            for (auto &fptr : friends)
+            {
+                if (!fptr->playerInRange(player.position))
+                    continue;
+                float d = (fptr->position.x - player.position.x) * (fptr->position.x - player.position.x) +
+                          (fptr->position.y - player.position.y) * (fptr->position.y - player.position.y);
+                if (d < best)
+                {
+                    best = d;
+                    nearbyNpc = fptr.get();
+                }
+            }
         }
 
-        // ---- Update projectiles vs enemy hurtboxes ----
-        for (auto &proj : projectiles)
-            proj.update(delta, tilemap.walls, enemyHurtboxes);
+        if (dialogue.isActive())
+        {
+            // ---- World is frozen while talking; route input to the dialogue ----
+            if (Input::dialogueUpJustPressed())
+                dialogue.moveSelection(-1);
+            if (Input::dialogueDownJustPressed())
+                dialogue.moveSelection(+1);
+            if (Input::dialogueConfirmJustPressed())
+                dialogue.confirm();
+        }
+        else
+        {
+            // ---- Start a conversation on interact ----
+            if (nearbyNpc && Input::interactJustPressed())
+            {
+                if (const Dialogue *d = getDialogue(nearbyNpc->dialogueId))
+                {
+                    int aff = RelationshipManager::instance().affection(nearbyNpc->npcId);
+                    dialogue.start(d, nearbyNpc->npcId, nearbyNpc->displayName,
+                                   nearbyNpc->dialogueTier(aff));
+                }
+            }
 
-        // ---- Remove dead projectiles and enemies ----
-        projectiles.erase(
-            std::remove_if(projectiles.begin(), projectiles.end(),
-                           [](const Projectile &p)
-                           { return !p.active; }),
-            projectiles.end());
+            // ---- Build hurtbox lists for this frame ----
+            std::vector<Hurtbox *> enemyHurtboxes;
+            enemyHurtboxes.reserve(enemies.size());
+            for (auto &e : enemies)
+                if (!e->markedForRemoval)
+                    enemyHurtboxes.push_back(&e->hurtbox);
 
-        enemies.erase(
-            std::remove_if(enemies.begin(), enemies.end(),
-                           [](const std::unique_ptr<Enemy> &e)
-                           { return e->markedForRemoval; }),
-            enemies.end());
+            // ---- Update player ----
+            player.update(delta);
 
-        // ---- Update damage numbers ----
-        damageNumbers.update(delta);
+            // ---- Player melee hitbox vs enemy hurtboxes ----
+            if (player.meleeHitbox.isActive)
+                player.meleeHitbox.checkOverlap(enemyHurtboxes);
+
+            // ---- Update enemies + their hitboxes vs player ----
+            std::vector<Hurtbox *> playerHurtbox = {&player.hurtbox};
+            for (auto &e : enemies)
+            {
+                if (e->markedForRemoval)
+                    continue;
+                e->update(delta);
+                if (e->meleeHitbox.isActive)
+                    e->meleeHitbox.checkOverlap(playerHurtbox);
+            }
+
+            // ---- Update NPCs (idle / sprite clock) ----
+            for (auto &fptr : friends)
+                fptr->update(delta);
+
+            // ---- Update projectiles vs enemy hurtboxes ----
+            for (auto &proj : projectiles)
+                proj.update(delta, tilemap.walls, enemyHurtboxes);
+
+            // ---- Remove dead projectiles and enemies ----
+            projectiles.erase(
+                std::remove_if(projectiles.begin(), projectiles.end(),
+                               [](const Projectile &p)
+                               { return !p.active; }),
+                projectiles.end());
+
+            enemies.erase(
+                std::remove_if(enemies.begin(), enemies.end(),
+                               [](const std::unique_ptr<Enemy> &e)
+                               { return e->markedForRemoval; }),
+                enemies.end());
+
+            // ---- Update damage numbers ----
+            damageNumbers.update(delta);
+        }
 
         // ---- Camera ----
         camera.target = player.position;
@@ -209,6 +335,10 @@ int main()
         // Draw enemies
         for (const auto &e : enemies)
             e->draw();
+
+        // Draw NPCs
+        for (const auto &fptr : friends)
+            fptr->draw();
 
         // Draw projectiles
         for (const auto &proj : projectiles)
@@ -257,8 +387,21 @@ int main()
         DrawText("WASD Move  |  Z Attack  |  C Cast  |  Ctrl Dodge  |  Shift Sprint",
                  10, GetScreenHeight() - 24, 14, DARKGRAY);
 
+        // --- Interaction prompt + dialogue box (screen space) ---
+        if (dialogue.isActive())
+        {
+            DialogueUI::draw(dialogue, GetScreenWidth(), GetScreenHeight());
+        }
+        else if (nearbyNpc)
+        {
+            DialogueUI::drawInteractionPrompt(nearbyNpc->displayName,
+                                              GetScreenWidth(), GetScreenHeight());
+        }
+
         EndDrawing();
     }
+
+    RelationshipManager::instance().save("relationships.sav");
 
     CloseWindow();
     return 0;
