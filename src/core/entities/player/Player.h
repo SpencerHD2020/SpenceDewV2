@@ -3,7 +3,9 @@
 #include "core/entities/player/states/StateMachine.h"
 #include "core/systems/combat/Hitbox.h"
 #include "core/systems/combat/Hurtbox.h"
+#include "core/animation/AnimatedSprite.h"
 #include <vector>
+#include <functional>
 
 // ============================================================
 //  Player  —  top-down character controller.
@@ -31,24 +33,37 @@ public:
     Hitbox meleeHitbox;
     Hurtbox hurtbox;
 
+    // --- Knockback ---
+    Vector2 knockbackVelocity = {};
+    float knockbackDecay = 900.0f; // px/s² deceleration
+
+    // --- I-frames after taking damage ---
+    float iFrameTimer = 0.0f;
+    float iFrameDuration = 0.5f;
+
     // --- Environment ---
-    // Pointer to the active level's wall list; set by main after tilemap creation.
     const std::vector<Rectangle> *walls = nullptr;
+
+    // --- Sprite ---
+    AnimatedSprite sprite;
 
     // --- FSM ---
     StateMachine fsm;
+
+    // --- Callbacks (set by main.cpp after init) ---
+    // Called when visual damage feedback is needed (spawn a damage number).
+    std::function<void(Vector2, float)> onDamageVisual;
+    // Called when the player fires a magic projectile.
+    std::function<void(Vector2, Vector2)> onFireProjectile; // (position, direction)
 
     void init();
     void update(float delta);
     void draw();
 
-    // Integrates velocity -> position; keeps hurtbox in sync.
-    // Call from states (mirrors Godot's move_and_slide).
     void moveAndSlide(float delta);
+    void takeDamage(float amount, float knockbackForce, Vector2 sourcePos);
+    void fireProjectile();
 
-    void takeDamage(float amount, Vector2 sourcePos);
-
-    // Axis-aligned bounding box around the player sprite
     Rectangle getBounds() const
     {
         return {

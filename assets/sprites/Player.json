@@ -1,0 +1,42 @@
+{
+    "frameWidth": 87.5,
+    "frameHeight": 93.6667,
+    "animations": {
+        "idle_down": {
+            "row": 0,
+            "frameCount": 4,
+            "fps": 8,
+            "loop": true
+        },
+        "run_down": {
+            "row": 1,
+            "frameCount": 6,
+            "fps": 12,
+            "loop": true
+        },
+        "run_left": {
+            "row": 2,
+            "frameCount": 6,
+            "fps": 12,
+            "loop": true
+        },
+        "attack_down": {
+            "row": 3,
+            "frameCount": 4,
+            "fps": 16,
+            "loop": false
+        },
+        "cast_down": {
+            "row": 4,
+            "frameCount": 3,
+            "fps": 14,
+            "loop": false
+        },
+        "dodge": {
+            "row": 5,
+            "frameCount": 4,
+            "fps": 20,
+            "loop": false
+        }
+    }
+}

@@ -8,18 +8,23 @@
 //  StateIdle  —  player is standing still.
 //  Watches for attack, dodge, or movement input.
 // ============================================================
-class StateIdle : public State {
+class StateIdle : public State
+{
 public:
-    void enter() override {
+    void enter() override
+    {
         player->velocity = {0.0f, 0.0f};
+        player->sprite.play("idle_down"); // Only one idle variant in the sheet
     }
 
-    void physicsUpdate(float /*delta*/) override {
-        if (Input::attackJustPressed()) { stateMachine->changeState("attack"); return; }
-        if (Input::dodgeJustPressed())  { stateMachine->changeState("dodge");  return; }
+    void physicsUpdate(float /*delta*/) override
+    {
+        if (checkActionTransitions())
+            return;
 
         Vector2 dir = Input::getMoveVector();
-        if (dir.x != 0.0f || dir.y != 0.0f) {
+        if (dir.x != 0.0f || dir.y != 0.0f)
+        {
             stateMachine->changeState("run");
         }
     }
