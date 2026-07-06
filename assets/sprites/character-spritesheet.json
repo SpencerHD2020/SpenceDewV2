@@ -1,0 +1,43 @@
+{
+    "frameWidth": 64,
+    "frameHeight": 64,
+    "_comment": "Universal LPC sheet (18 cols x 70 rows @64px). Directional order per block is up/left/down/right. Only the animations the game currently uses are mapped; the sheet has many more rows to draw from later.",
+    "animations": {
+        "idle_down": {
+            "row": 10,
+            "frameCount": 1,
+            "fps": 1,
+            "loop": true
+        },
+        "run_down": {
+            "row": 10,
+            "frameCount": 9,
+            "fps": 12,
+            "loop": true
+        },
+        "run_left": {
+            "row": 9,
+            "frameCount": 9,
+            "fps": 12,
+            "loop": true
+        },
+        "attack_down": {
+            "row": 14,
+            "frameCount": 6,
+            "fps": 14,
+            "loop": false
+        },
+        "cast_down": {
+            "row": 2,
+            "frameCount": 7,
+            "fps": 14,
+            "loop": false
+        },
+        "dodge": {
+            "row": 6,
+            "frameCount": 8,
+            "fps": 18,
+            "loop": false
+        }
+    }
+}

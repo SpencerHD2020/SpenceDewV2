@@ -30,7 +30,7 @@ void Player::init()
     // --- Sprite ---
     // Load before fsm.init() so animation defs exist when StateIdle::enter()
     // calls sprite.play(). JSON name differs from PNG, so pass explicitly.
-    sprite.load("assets/sprites/Player.png", "assets/sprites/Player.json");
+    sprite.load("assets/sprites/character-spritesheet.png", "assets/sprites/character-spritesheet.json");
 
     // --- Register states ---
     fsm.addState<StateIdle>("idle");
@@ -71,7 +71,9 @@ void Player::draw()
         tint = {255, 255, 255, alpha};
     }
 
-    sprite.draw(position, 1.0f, tint);
+    // LPC sheet frames are 64px; draw at half size so the character reads at a
+    // sensible scale next to the 16px dungeon tiles (temporary art).
+    sprite.draw(position, 0.5f, tint);
 
     // Debug: active melee hitbox
     if (meleeHitbox.isActive)
