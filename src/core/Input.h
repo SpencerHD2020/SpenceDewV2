@@ -40,6 +40,13 @@ namespace Input
         return IsKeyPressed(KEY_E) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE);
     }
 
+    // --- Farming / world ---
+    // Single "use tool on the ground" button (temporary: till → plant → water
+    // based on the target tile's state).
+    inline bool farmActionJustPressed() { return IsKeyPressed(KEY_F); }
+    // Debug: warp to the next level.
+    inline bool warpJustPressed() { return IsKeyPressed(KEY_BACKSPACE); }
+
     // Returns a normalised direction vector from WASD / arrow keys.
     // Returns {0,0} when no directional input is held.
     inline Vector2 getMoveVector()

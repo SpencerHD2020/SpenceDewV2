@@ -26,6 +26,7 @@ struct LdtkTile
 {
     Rectangle src;
     Rectangle dst;
+    int tileId = -1; // LDtk tileset tile id ("t"); used for gameplay tile queries
 };
 
 // One visual tile layer ("Tiles" / "AutoLayer"). tilesetRelPath is the path

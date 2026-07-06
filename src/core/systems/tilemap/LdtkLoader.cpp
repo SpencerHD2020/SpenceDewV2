@@ -87,6 +87,7 @@ bool LdtkLoader::load(const std::string &filePath, std::vector<LdtkLevel> &outLe
                         static_cast<float>(level.worldX + t["px"][0].get<int>()),
                         static_cast<float>(level.worldY + t["px"][1].get<int>()),
                         gs, gs};
+                    tile.tileId = t.value("t", -1);
                     tl.tiles.push_back(tile);
                 }
                 if (!tl.tiles.empty())

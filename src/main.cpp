@@ -7,6 +7,7 @@
 #include "core/systems/tilemap/LdtkLoader.h"
 #include "core/systems/combat/Projectile.h"
 #include "core/systems/navigation/Pathfinder.h"
+#include "core/systems/farming/FarmController.h"
 #include "core/systems/ui/DamageNumbers.h"
 #include "core/systems/ui/DialogueUI.h"
 #include "core/systems/dialogue/Dialogue.h"
@@ -31,110 +32,30 @@ int main()
     SetTargetFPS(60);
 
     // ----------------------------------------------------------------
-    // Level / tilemap
+    // Load all levels once (kept alive so we can warp between them).
+    // ----------------------------------------------------------------
+    std::vector<LdtkLevel> levels;
+    if (USE_LDTK)
+        LdtkLoader::load("assets/levels/level_01.ldtk", levels);
+
+    // ----------------------------------------------------------------
+    // Persistent systems (survive across level warps)
     // ----------------------------------------------------------------
     Tilemap tilemap;
-    Vector2 playerSpawn = {0.0f, 0.0f};
-    std::vector<Vector2> enemySpawns;
-    // Positions of NPC markers placed in LDtk (identifier "NpcSpawn" / "PartnerSpawn").
-    std::vector<Vector2> npcSpawns;
-    std::vector<Vector2> partnerSpawns;
-
-    if (USE_LDTK)
-    {
-        std::vector<LdtkLevel> levels;
-        if (LdtkLoader::load("assets/levels/level_01.ldtk", levels) && !levels.empty())
-        {
-            tilemap.walls = levels[0].walls;
-            // Load the visual tiles. The .ldtk references the tileset via a path
-            // outside the project, so we point at the copy shipped in assets/.
-            tilemap.loadVisuals(levels[0], "assets/tilesets/tilemap.png");
-            for (const auto &ent : levels[0].entities)
-            {
-                if (ent.identifier == "PlayerSpawn")
-                    playerSpawn = ent.position;
-                if (ent.identifier == "EnemySpawn")
-                    enemySpawns.push_back(ent.position);
-                if (ent.identifier == "NpcSpawn")
-                    npcSpawns.push_back(ent.position);
-                if (ent.identifier == "PartnerSpawn")
-                    partnerSpawns.push_back(ent.position);
-            }
-        }
-    }
-    else
-    {
-        tilemap = Tilemap::createTestRoom();
-        enemySpawns = {{-120.0f, -100.0f}, {100.0f, -100.0f}, {-120.0f, 100.0f}};
-    }
-
-    // ----------------------------------------------------------------
-    // Pathfinder  (built once from the wall list)
-    // ----------------------------------------------------------------
     Pathfinder pathfinder;
-    {
-        // Compute the navigable bounding box from all walls
-        float minX = 1e9f, minY = 1e9f;
-        float maxX = -1e9f, maxY = -1e9f;
-        for (const auto &w : tilemap.walls)
-        {
-            if (w.x < minX)
-                minX = w.x;
-            if (w.y < minY)
-                minY = w.y;
-            if (w.x + w.width > maxX)
-                maxX = w.x + w.width;
-            if (w.y + w.height > maxY)
-                maxY = w.y + w.height;
-        }
-        if (maxX > minX && maxY > minY)
-        {
-            pathfinder.buildGrid(tilemap.walls,
-                                 {minX, minY, maxX - minX, maxY - minY});
-        }
-    }
-
-    // ----------------------------------------------------------------
-    // Player
-    // ----------------------------------------------------------------
     DamageNumbers damageNumbers;
+    FarmController farm;
 
     Player player;
     player.init();
-    player.position = playerSpawn;
     player.walls = &tilemap.walls;
-
     player.onDamageVisual = [&damageNumbers](Vector2 pos, float dmg)
     {
         damageNumbers.spawn(pos, dmg, WHITE);
     };
 
-    // ----------------------------------------------------------------
-    // Enemies
-    // ----------------------------------------------------------------
-    // Stored as unique_ptr so enemies are heap-allocated and never relocated;
-    // this keeps fsm.enemy / state->enemy self-pointers permanently valid.
-    std::vector<std::unique_ptr<Enemy>> enemies;
-    enemies.reserve(enemySpawns.size());
-    for (const auto &sp : enemySpawns)
-    {
-        auto &e = enemies.emplace_back(std::make_unique<Enemy>());
-        e->init(sp);
-        e->walls = &tilemap.walls;
-        e->playerPos = &player.position;
-        e->pathfinder = &pathfinder;
-        e->onDamageVisual = [&damageNumbers](Vector2 pos, float dmg)
-        {
-            damageNumbers.spawn(pos, dmg, RED);
-        };
-    }
-
-    // ----------------------------------------------------------------
-    // Projectiles
-    // ----------------------------------------------------------------
     std::vector<Projectile> projectiles;
     projectiles.reserve(32);
-
     player.onFireProjectile = [&projectiles, &player](Vector2 pos, Vector2 dir)
     {
         Projectile bolt;
@@ -142,14 +63,8 @@ int main()
         projectiles.push_back(bolt);
     };
 
-    // ----------------------------------------------------------------
-    // NPCs  (Friends + PotentialPartners)
-    // ----------------------------------------------------------------
-    // Heap-allocated like enemies so pointers stay stable. Stored as Friend*
-    // so PotentialPartner behaviour (tiers, heart marker) works polymorphically.
-    //
-    // >>> To add a new NPC: append one entry to the spawn table below and
-    //     create assets/dialogue/<dialogueId>.json. See NPC_Dialogue_Guide.md.
+    // Enemies + NPCs are (re)spawned per level.
+    std::vector<std::unique_ptr<Enemy>> enemies;
     std::vector<std::unique_ptr<Friend>> friends;
 
     auto addPartner = [&](Vector2 pos, const std::string &id,
@@ -160,39 +75,13 @@ int main()
         p->walls = &tilemap.walls;
         friends.push_back(std::move(p));
     };
-    auto addFriend = [&](Vector2 pos, const std::string &id,
-                         const std::string &name, const std::string &dialogueId)
-    {
-        auto fr = std::make_unique<Friend>();
-        fr->init(pos, id, name, dialogueId);
-        fr->walls = &tilemap.walls;
-        friends.push_back(std::move(fr));
-    };
-
-    // Demo romanceable NPC. Uses a LDtk PartnerSpawn if present, else stands
-    // a little to the right of the player spawn so it's immediately testable.
-    {
-        Vector2 willowPos = partnerSpawns.empty()
-                                ? Vector2{playerSpawn.x + 64.0f, playerSpawn.y}
-                                : partnerSpawns[0];
-        addPartner(willowPos, "willow", "Willow", "willow");
-    }
-    // Any additional LDtk-placed partners/friends beyond the first.
-    for (size_t i = 1; i < partnerSpawns.size(); ++i)
-        addPartner(partnerSpawns[i], "partner_" + std::to_string(i),
-                   "Stranger", "willow");
-    for (size_t i = 0; i < npcSpawns.size(); ++i)
-        addFriend(npcSpawns[i], "npc_" + std::to_string(i), "Villager", "willow");
 
     // ----------------------------------------------------------------
     // Dialogue + relationships
     // ----------------------------------------------------------------
     RelationshipManager::instance().load("relationships.sav");
-
     std::unordered_map<std::string, Dialogue> dialogueCache;
     DialogueRunner dialogue;
-
-    // Lazily load and cache a dialogue file by id.
     auto getDialogue = [&](const std::string &id) -> const Dialogue *
     {
         auto it = dialogueCache.find(id);
@@ -204,6 +93,101 @@ int main()
         auto [ins, ok] = dialogueCache.emplace(id, std::move(d));
         return &ins->second;
     };
+
+    // ----------------------------------------------------------------
+    // Level activation — (re)build everything tied to a specific level.
+    // Called at startup and whenever the player warps (Backspace).
+    // ----------------------------------------------------------------
+    int currentLevel = 0;
+
+    auto buildPathfinder = [&]()
+    {
+        float minX = 1e9f, minY = 1e9f, maxX = -1e9f, maxY = -1e9f;
+        for (const auto &w : tilemap.walls)
+        {
+            minX = std::min(minX, w.x);
+            minY = std::min(minY, w.y);
+            maxX = std::max(maxX, w.x + w.width);
+            maxY = std::max(maxY, w.y + w.height);
+        }
+        if (maxX > minX && maxY > minY)
+            pathfinder.buildGrid(tilemap.walls, {minX, minY, maxX - minX, maxY - minY});
+    };
+
+    auto activateLevel = [&](int idx)
+    {
+        dialogue.stop();
+        enemies.clear();
+        friends.clear();
+
+        if (levels.empty())
+        {
+            // No LDtk data — fall back to the hardcoded test room.
+            tilemap.unloadVisuals();
+            tilemap = Tilemap::createTestRoom();
+            player.position = {0.0f, 0.0f};
+            buildPathfinder();
+            farm.clear();
+            currentLevel = 0;
+            return;
+        }
+
+        idx = ((idx % (int)levels.size()) + (int)levels.size()) % (int)levels.size();
+        currentLevel = idx;
+        const LdtkLevel &lvl = levels[idx];
+
+        // --- Tilemap visuals + collision ---
+        tilemap.unloadVisuals();
+        tilemap.walls = lvl.walls;
+        tilemap.loadVisuals(lvl, "assets/tilesets/tilemap.png");
+
+        // --- Spawn markers ---
+        Vector2 playerSpawn = {0.0f, 0.0f};
+        std::vector<Vector2> enemySpawns, partnerSpawns;
+        for (const auto &ent : lvl.entities)
+        {
+            if (ent.identifier == "PlayerSpawn")
+                playerSpawn = ent.position;
+            else if (ent.identifier == "EnemySpawn")
+                enemySpawns.push_back(ent.position);
+            else if (ent.identifier == "PartnerSpawn")
+                partnerSpawns.push_back(ent.position);
+        }
+
+        player.position = playerSpawn;
+        player.velocity = {0.0f, 0.0f};
+
+        buildPathfinder();
+
+        // --- Enemies ---
+        enemies.reserve(enemySpawns.size());
+        for (const auto &sp : enemySpawns)
+        {
+            auto &e = enemies.emplace_back(std::make_unique<Enemy>());
+            e->init(sp);
+            e->walls = &tilemap.walls;
+            e->playerPos = &player.position;
+            e->pathfinder = &pathfinder;
+            e->onDamageVisual = [&damageNumbers](Vector2 pos, float dmg)
+            {
+                damageNumbers.spawn(pos, dmg, RED);
+            };
+        }
+
+        // --- Demo romanceable NPC on the starting level ---
+        if (idx == 0)
+        {
+            Vector2 wpos = partnerSpawns.empty()
+                               ? Vector2{playerSpawn.x + 64.0f, playerSpawn.y}
+                               : partnerSpawns[0];
+            addPartner(wpos, "willow", "Willow", "willow");
+        }
+
+        // --- Farmable tiles for this level ---
+        farm.build(lvl);
+    };
+
+    activateLevel(0);
 
     // ----------------------------------------------------------------
     // Camera
@@ -218,6 +202,19 @@ int main()
     while (!WindowShouldClose())
     {
         const float delta = GetFrameTime();
+
+        // ---- Debug level warp (Backspace) ----
+        // Rebuilds the whole level in place. Do NOT `continue` here: skipping
+        // EndDrawing() would also skip raylib's input polling, leaving Backspace
+        // stuck "just pressed" and re-warping every frame. All entity/farm state
+        // below is computed *after* this, so it safely uses the new level.
+        if (!dialogue.isActive() && Input::warpJustPressed())
+            activateLevel(currentLevel + 1);
+
+        // ---- Tile the player would act on: the cell just in front of them ----
+        Vector2 farmTarget = {
+            player.position.x + player.facing.x * (float)farm.gridSize(),
+            player.position.y + player.facing.y * (float)farm.gridSize()};
 
         // ---- Find the nearest interactable NPC in range (for prompt + input) ----
         Friend *nearbyNpc = nullptr;
@@ -259,6 +256,10 @@ int main()
                                    nearbyNpc->dialogueTier(aff));
                 }
             }
+
+            // ---- Farming: one button tills → plants → waters the target tile ----
+            if (Input::farmActionJustPressed())
+                farm.interact(farmTarget);
 
             // ---- Build hurtbox lists for this frame ----
             std::vector<Hurtbox *> enemyHurtboxes;
@@ -332,6 +333,14 @@ int main()
                 DrawLine(-640, y * 32, 640, y * 32, {50, 50, 50, 255});
         }
 
+        // Farm tiles + the currently targeted cell
+        farm.draw();
+        {
+            Rectangle tr = farm.cellRect(farmTarget);
+            Color hl = farm.isFarmable(farmTarget) ? Fade(YELLOW, 0.9f) : Fade(RED, 0.45f);
+            DrawRectangleLinesEx(tr, 2.0f, hl);
+        }
+
         // Draw enemies
         for (const auto &e : enemies)
             e->draw();
@@ -386,6 +395,9 @@ int main()
 
         DrawText("WASD Move  |  Z Attack  |  C Cast  |  Ctrl Dodge  |  Shift Sprint",
                  10, GetScreenHeight() - 24, 14, DARKGRAY);
+        DrawText(TextFormat("Level: %s   |  E Talk  |  F Till/Plant/Water  |  Backspace Warp",
+                            levels.empty() ? "test" : levels[currentLevel].identifier.c_str()),
+                 10, GetScreenHeight() - 42, 14, DARKGRAY);
 
         // --- Interaction prompt + dialogue box (screen space) ---
         if (dialogue.isActive())
